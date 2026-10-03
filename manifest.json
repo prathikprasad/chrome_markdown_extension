@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Save as Markdown",
+  "version": "1.0",
+  "description": "Press Ctrl+M to save the current page as a Markdown file.",
+  "permissions": ["activeTab", "scripting", "downloads"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_title": "Save page as Markdown (Ctrl+M)" },
+  "commands": {
+    "save-markdown": {
+      "suggested_key": { "default": "Ctrl+M", "mac": "Command+M" },
+      "description": "Save current page as Markdown"
+    }
+  }
+}
