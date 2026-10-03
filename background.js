@@ -1,13 +1,22 @@
+importScripts('defaults.js');
+
 async function save(tab) {
+  const opts = await chrome.storage.sync.get(DEFAULTS);
   const [{ result }] = await chrome.scripting.executeScript({
     target: { tabId: tab.id },
     func: pageToMarkdown,
+    args: [opts],
   });
   const name = (result.title || 'page').replace(/[\\/:*?"<>|]+/g, '_').trim().slice(0, 100) + '.md';
+  // Downloads only accepts relative paths: strip invalid chars, "..", and empty segments.
+  const folder = opts.folder.split(/[\\/]+/)
+    .map((s) => s.replace(/[:*?"<>|]+/g, '_').trim())
+    .filter((s) => s && s !== '.' && s !== '..')
+    .join('/');
   await chrome.downloads.download({
     url: 'data:text/markdown;charset=utf-8,' + encodeURIComponent(result.md),
-    filename: name,
-    saveAs: true, // shows a Save dialog, like Ctrl+P
+    filename: folder ? `${folder}/${name}` : name,
+    saveAs: opts.saveAs,
   });
 }
 
@@ -15,8 +24,9 @@ chrome.commands.onCommand.addListener((cmd, tab) => cmd === 'save-markdown' && s
 chrome.action.onClicked.addListener(save);
 
 // Runs inside the page. Must be self-contained (no outer references).
-function pageToMarkdown() {
-  const SKIP = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'SVG', 'IFRAME', 'NAV', 'FOOTER', 'FORM', 'BUTTON', 'TEMPLATE']);
+function pageToMarkdown(opts) {
+  const SKIP = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'SVG', 'IFRAME', 'FORM', 'BUTTON', 'TEMPLATE']);
+  if (opts.content === 'main') SKIP.add('NAV').add('FOOTER'); // whole-page mode keeps menus and footers
   const abs = (u) => { try { return new URL(u, location.href).href; } catch { return u; } };
 
   const inline = (node) => [...node.childNodes].map(conv).join('');
@@ -68,6 +78,7 @@ function pageToMarkdown() {
         return href && text && !href.startsWith('javascript:') ? `[${text}](${abs(href)})` : text;
       }
       case 'IMG': {
+        if (!opts.includeImages) return '';
         const src = node.getAttribute('src');
         return src ? `![${node.alt || ''}](${abs(src)})` : '';
       }
@@ -82,12 +93,14 @@ function pageToMarkdown() {
   // Largest <article>/<main>; if it holds under half the page's text it's a teaser/card, so use the whole body.
   // ponytail: text-length heuristic. Swap in Readability.js if you want smarter extraction.
   const len = (el) => el.innerText.length;
-  const best = [...document.querySelectorAll('article, main, [role="main"]')].sort((a, b) => len(b) - len(a))[0];
+  const best = opts.content === 'main' &&
+    [...document.querySelectorAll('article, main, [role="main"]')].sort((a, b) => len(b) - len(a))[0];
   const root = best && len(best) > len(document.body) * 0.5 ? best : document.body;
   const body = conv(root)
     .replace(/[ \t]+\n/g, (m) => (m.startsWith('  ') ? '  \n' : '\n'))
     .replace(/\n{3,}/g, '\n\n')
     .trim();
-  const md = `# ${document.title}\n\nSource: ${location.href}\n\n${body}\n`;
+  const header = opts.includeHeader ? `# ${document.title}\n\nSource: ${location.href}\n\n` : '';
+  const md = `${header}${body}\n`;
   return { title: document.title, md };
 }

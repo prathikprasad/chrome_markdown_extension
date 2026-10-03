@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Save as Markdown – Options</title>
+  <style>
+    body { font: 14px system-ui, sans-serif; margin: 16px; min-width: 360px; color: #222; }
+    label { display: block; margin: 12px 0; }
+    input[type=text], select { display: block; margin-top: 4px; width: 100%; box-sizing: border-box; padding: 4px; }
+    small { color: #666; }
+    #status { color: green; height: 1em; }
+    @media (prefers-color-scheme: dark) { body { background: #202124; color: #e8eaed; } small { color: #9aa0a6; } }
+  </style>
+</head>
+<body>
+  <label><input type="checkbox" id="saveAs"> Ask where to save each file</label>
+
+  <label>Save into subfolder of Downloads
+    <input type="text" id="folder" placeholder="e.g. Markdown/Web (empty = Downloads)">
+  </label>
+
+  <label>Content to save
+    <select id="content">
+      <option value="main">Main content only</option>
+      <option value="page">Whole page</option>
+    </select>
+  </label>
+
+  <label><input type="checkbox" id="includeImages"> Include images</label>
+  <label><input type="checkbox" id="includeHeader"> Add page title and source URL at the top</label>
+
+  <p><small>Keyboard shortcut: change it at <a href="#" id="shortcuts">chrome://extensions/shortcuts</a></small></p>
+  <p id="status"></p>
+
+  <script src="defaults.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>
